@@ -1,0 +1,24 @@
+[package]
+name = "videodocparser"
+version = "0.1.0"
+authors = ["Fabio Thomaz Molinar <fabiomolinar@gmail.com>"]
+description = "A command-line tool to convert video recordings of documents into searchable digital formats."
+readme = "README.md"
+license = "Apache-2.0"
+repository = "https://github.com/fabiomolinar/videodocparser"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.99"
+clap = { version = "4.5.47", features = ["derive"] }
+env_logger = "0.11.8"
+ffmpeg-next = "8.0.0"
+image = "0.25.8"
+img_hash = "3.2.0"
+log = "0.4.28"
+lopdf = "0.38.0"
+pdf-writer = "0.13.0"
+rayon = "1.11.0"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.143"
+tesseract-rs = "0.1.20"

@@ -6,7 +6,7 @@
 use ffmpeg_next as ffmpeg;
 use ffmpeg::format::{input, Pixel};
 use ffmpeg::media::Type;
-use ffmpeg::software::scaling::{context::Context, flag::Flags};
+use ffmpeg::software::scaling::{Context as ScalingContext, flag::Flags};
 use ffmpeg::util::frame::video::Video;
 use image::{ImageBuffer, Rgb};
 use anyhow::{Context, Result};
@@ -16,7 +16,7 @@ use log::info;
 /// Extracts all frames from a video file and returns them as a vector of images.
 pub fn extract_frames(path: &Path) -> Result<Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>> {
     ffmpeg::init().context("Failed to initialize FFmpeg")?;
-    
+     
     let mut frames = Vec::new();
     let mut ictx = input(path).context("Failed to open input file")?;
     let input = ictx
@@ -30,7 +30,7 @@ pub fn extract_frames(path: &Path) -> Result<Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>>
     let mut decoder = context_decoder.decoder().video()
         .context("Failed to create video decoder")?;
 
-    let mut scaler = Context::get(
+    let mut scaler = ScalingContext::get(
         decoder.format(),
         decoder.width(),
         decoder.height(),
@@ -76,3 +76,4 @@ pub fn extract_frames(path: &Path) -> Result<Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>>
     info!("Finished extracting {} frames total.", frames.len());
     Ok(frames)
 }
+

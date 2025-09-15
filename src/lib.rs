@@ -57,8 +57,8 @@ pub fn run(config: Config) -> Result<()> {
     info!("Extracted {} frames. Analyzing for unique content...", frames.len());
 
     // 3. Frame Analysis (Placeholder)
-    let analysis = frame_analyzer::analyze_frames(frames, config.sensitivity, &config.output_dir)?;
-    let unique_frames = analysis.kept_frames;
+    //let analysis = frame_analyzer::analyze_frames(frames, config.sensitivity, &config.output_dir)?;
+    let unique_frames = frames;
     info!("Found {} unique frames to process.", unique_frames.len());
 
 

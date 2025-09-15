@@ -49,23 +49,10 @@ pub fn extract_frames(path: &Path) -> Result<Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>>
                 let mut rgb_frame = Video::empty();
                 scaler.run(&decoded, &mut rgb_frame).context("Scaler failed")?;
                 
-                let (w, h) = (rgb_frame.width(), rgb_frame.height());
-                let stride = rgb_frame.stride(0);
-                let data = rgb_frame.data(0);
-
-                let mut buf = Vec::with_capacity((w * h * 3) as usize);
-                for y in 0..h {
-                    let start = (y as usize) * stride;
-                    let end = start + (w * 3) as usize;
-                    buf.extend_from_slice(&data[start..end]);
-                }                                
-                assert_eq!(
-                    buf.len(), (w * h * 3) as usize, 
-                    "Frame buffer length mismatch: got {}, expected {}", 
-                    buf.len(), (w * h * 3)
-                );
-                let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
-                    ImageBuffer::from_vec(w, h, buf).context("Failed to create image buffer")?;
+                let frame_data = rgb_frame.data(0);
+                let img: ImageBuffer<Rgb<u8>, Vec<u8>> = 
+                    ImageBuffer::from_raw(rgb_frame.width(), rgb_frame.height(), frame_data.to_vec())
+                        .context("Failed to create image buffer from frame data")?;
                 
                 frames.push(img);
                 

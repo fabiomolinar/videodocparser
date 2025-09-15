@@ -17,16 +17,17 @@
 
 ### Input Formats
 
-- **Video container formats**: MP4
-- **Video codecs**: H.264
-- **Resolution**: Minimum 480p, recommended ≥1080p for accurate OCR
-- **Audio**: Ignored (not relevant for text/image extraction)
+- **Video container formats**: MP4.
+- **Video codecs**: H.264.
+- **Resolution**: Minimum 480p, recommended ≥1080p for accurate OCR.
+- **Audio**: Ignored (not relevant for text/image extraction).
 
 ### Output Formats
 
-- **Text-based formats**: Markdown (`.md`) with embedded image references for figures and tables
-- **Document formats**: PDF (searchable, with text and embedded images/tables)
-- **Metadata**: Optional JSON index containing timestamps, extracted entities, and classification
+- **Text-based formats**: Markdown (`.md`) with embedded image references for figures and tables.
+- **Document formats**: PDF (searchable, with text and embedded images/tables).
+- **Images**: A folder with non-repeated images from the recorded document.
+- **Metadata**: Optional JSON index containing timestamps, extracted entities, and classification.
 
 ### Core Features
 
@@ -55,7 +56,7 @@ videodocparser --input INPUT_FILE --output OUTPUT_DIR [options]
 
 - `--input, -i`: Path to input video file
 - `--output, -o`: Output directory
-- `--format, -f`: Output format (`pdf`, `md`)
+- `--format, -f`: Output format (`pdf`, `md`, `img`)
 - `--sensitivity, -s`: Frame-to-frame sensitivity threshold
 - `--lang, -l`: OCR language (default: `eng`)
 - `--index`: Generate optional JSON index
@@ -114,21 +115,21 @@ videodocparser --input INPUT_FILE --output OUTPUT_DIR [options]
 
 ### Core Dependencies (Rust-First)
 
-- **Video Processing**: `ffmpeg-next` crate (FFmpeg bindings)
-- **Frame Comparison & Image Processing**: `image`, `img_hash`, `imageproc`
-- **OCR**: `tesseract-rs` crate (Tesseract OCR)
-- **Document Generation**: `printpdf` or `pdf-writer` for PDF; Markdown output requires no external library
+- **Video Processing**: `ffmpeg-next` crate (FFmpeg bindings).
+- **Frame Comparison & Image Processing**: `image`, `img_hash`, `imageproc`.
+- **OCR**: `tesseract-rs` crate (Tesseract OCR).
+- **Document Generation**: `printpdf` or `pdf-writer` for PDF; Markdown output requires no external library.
 
 ### Optional / Utility Dependencies
 
-- Logging: `env_logger` or `tracing`
-- CLI parsing: `clap` or `structopt`
-- Config parsing: `serde` + `toml`
+- Logging: `env_logger` or `tracing`.
+- CLI parsing: `clap` or `structopt`.
+- Config parsing: `serde` + `toml`.
 
 ### External Tools (Fallbacks)
 
-- Tesseract binary if Rust bindings are insufficient
-- FFmpeg CLI fallback for video decoding issues
+- Tesseract binary if Rust bindings are insufficient.
+- FFmpeg CLI fallback for video decoding issues.
 
 ---
 

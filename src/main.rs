@@ -46,6 +46,7 @@ struct Args {
 enum OutputFormat {
     Pdf,
     Md,
+    Img,
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
@@ -81,6 +82,7 @@ fn main() {
         output_format: match args.format {
             OutputFormat::Pdf => "pdf".to_string(),
             OutputFormat::Md => "md".to_string(),
+            OutputFormat::Img => "img".to_string(),
         },
         sensitivity: args.sensitivity,
         lang: args.lang,
@@ -96,3 +98,5 @@ fn main() {
     info!("Processing completed successfully.");
     std::process::exit(0);
 }
+
+

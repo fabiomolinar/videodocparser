@@ -56,26 +56,37 @@ pub fn run(config: Config) -> Result<()> {
 
     // 3. Frame Analysis (Placeholder)
     // TODO: Implement frame_analyzer to select unique frames
-    // let unique_frames = frame_analyzer::select_unique_frames(frames, config.sensitivity);
-    // info!("Found {} unique frames.", unique_frames.len());
+    // For now, we will consider all frames as "unique" for the 'img' format.
+    let unique_frames = frames; // In the future, this will be the output of frame_analyzer
+    info!("Found {} unique frames to process.", unique_frames.len());
 
 
     // 4. OCR & Element Detection (Placeholder)
     // TODO: Loop through unique_frames and perform OCR and element detection.
-    // for frame in unique_frames {
-    //     let text = ocr::extract_text(&frame, &config.lang)?;
-    //     let images = element_detector::detect_and_save_elements(&frame, &images_dir)?;
-    // }
     
-    // 5. Build Document (Placeholder)
-    // TODO: Use the extracted text and images to build the final document.
-    // match config.output_format.as_str() {
-    //     "pdf" => document_builder::build_pdf(/*...args...*/)?,
-    //     "md" => document_builder::build_markdown(/*...args...*/)?,
-    //     _ => unreachable!(),
-    // }
-
-    info!("Document generation placeholder complete.");
+    // 5. Build Document or Save Images
+    info!("Generating output in '{}' format.", config.output_format);
+    match config.output_format.as_str() {
+        "pdf" => {
+            // TODO: document_builder::build_pdf(/*...args...*/)?,
+            info!("PDF generation is not yet implemented.");
+        }
+        "md" => {
+            // TODO: document_builder::build_markdown(/*...args...*/)?,
+            info!("Markdown generation is not yet implemented.");
+        }
+        "img" => {
+            info!("Saving unique frames as images...");
+            for (i, frame) in unique_frames.iter().enumerate() {
+                let frame_path = images_dir.join(format!("frame_{:05}.png", i));
+                frame.save(&frame_path)
+                     .with_context(|| format!("Failed to save frame to {:?}", frame_path))?;
+            }
+            info!("Successfully saved {} frames to {:?}", unique_frames.len(), images_dir);
+        }
+        _ => unreachable!(), // Should be caught by clap
+    }
 
     Ok(())
 }
+

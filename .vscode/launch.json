@@ -13,23 +13,13 @@
             "program": "${workspaceFolder}/target/debug/videodocparser",
             "args": [
                 // Command-line arguments for debugging.
-                // For example, to debug a repository:
-                // "rust-lang/rust-by-example"
-                //
                 // For now, using a variable to prompt for input when starting the debug session:
-                "${input:flags}"
+                "--input", "input/recording.mp4",
+                "--output", "output"
             ],
             // A pre-launch task to ensure the binary is built.
-            "preLaunchTask": "rust: cargo build",
+            //"preLaunchTask": "rust: cargo build",
             "cwd": "${workspaceFolder}"
-        }
-    ],
-    "inputs": [
-        {
-            "id": "flags",
-            "type": "promptString",
-            "description": "Enter the command line flags:",
-            "default": "-i input/recording.mp4 -o output -log_level=debug"
         }
     ]
 }

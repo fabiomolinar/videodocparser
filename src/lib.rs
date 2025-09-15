@@ -79,9 +79,14 @@ pub fn run(config: Config) -> Result<()> {
         "img" => {
             info!("Saving unique frames as images...");
             for (i, frame) in unique_frames.iter().enumerate() {
-                let frame_path = result_dir.join(format!("frame_{:05}.png", i));
-                frame.save(&frame_path)
-                     .with_context(|| format!("Failed to save frame to {:?}", frame_path))?;
+                let file_name = format!("frame_{:05}.png", i);
+                let path = &result_dir.join(file_name);
+
+                img_hash::image::DynamicImage::ImageRgb8(frame.clone())
+                    .save(&path)
+                    .with_context(|| format!("Failed to save frame to {:?}", path))?;
+
+                info!("Saved {:?}", path);
             }
             info!("Successfully saved {} frames to {:?}", unique_frames.len(), result_dir);
         }

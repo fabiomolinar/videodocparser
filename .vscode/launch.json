@@ -1,0 +1,35 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "cppvsdbg",
+            "request": "launch",
+            "name": "Debug videodocparser",
+            // The path to the executable to debug.
+            // This is relative to the workspace root.
+            "program": "${workspaceFolder}/target/debug/videodocparser",
+            "args": [
+                // Command-line arguments for debugging.
+                // For example, to debug a repository:
+                // "rust-lang/rust-by-example"
+                //
+                // For now, using a variable to prompt for input when starting the debug session:
+                "${input:flags}"
+            ],
+            // A pre-launch task to ensure the binary is built.
+            "preLaunchTask": "rust: cargo build",
+            "cwd": "${workspaceFolder}"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "flags",
+            "type": "promptString",
+            "description": "Enter the command line flags:",
+            "default": "-i input/recording.mp4 -o output -log_level=debug"
+        }
+    ]
+}

@@ -4,6 +4,8 @@ use anyhow::Result;
 use log::info;
 use std::fs;
 use std::path::Path;
+use std::time::Instant;
+use indicatif::{ProgressBar, ProgressStyle};
 
 pub struct AnalysisResult {
     pub kept_frames: Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>,
@@ -16,6 +18,16 @@ pub fn analyze_frames(
     sensitivity: f64,
     output_dir: &Path,
 ) -> Result<AnalysisResult> {
+    let start_time = Instant::now();
+    let total = frames.len() as u64;
+    let pb = ProgressBar::new(total);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} Analyzing frames [{bar:40.cyan/blue}] {pos}/{len} ({eta})")
+            .unwrap()
+            .progress_chars("##-"),
+    );
+
     let mut kept_frames = Vec::new();
     let mut differences = Vec::new();
     let mut removed_indices = Vec::new();
@@ -29,6 +41,7 @@ pub fn analyze_frames(
     let mut last_hash: Option<ImageHash> = None;
 
     for (i, frame) in frames.into_iter().enumerate() {
+        pb.inc(1);
         // Convert ImageBuffer to DynamicImage so it works with img_hash
         let dyn_img = DynamicImage::ImageRgb8(frame.clone());
         let hash = hasher.hash_image(&dyn_img);
@@ -47,8 +60,11 @@ pub fn analyze_frames(
         }
 
         kept_frames.push(frame);
-        last_hash = Some(hash);
+        last_hash = Some(hash);        
     }
+
+    pb.finish_with_message("Analysis done");
+    let elapsed = start_time.elapsed();
 
     // Save analysis log
     let stats_dir = output_dir.join("analysis");
@@ -66,7 +82,8 @@ pub fn analyze_frames(
     fs::write(stats_path, serde_json::to_string_pretty(&report)?)?;
 
     info!(
-        "Frame analysis complete. Kept {}, removed {}.",
+        "Frame analysis complete in {:.2?}. Kept {}, removed {}.",
+        elapsed,
         kept_frames.len(),
         removed_indices.len()
     );

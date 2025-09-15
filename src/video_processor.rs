@@ -8,7 +8,7 @@ use ffmpeg::format::{input, Pixel};
 use ffmpeg::media::Type;
 use ffmpeg::software::scaling::{Context as ScalingContext, flag::Flags};
 use ffmpeg::util::frame::video::Video;
-use img_hash::image::{ImageBuffer, Rgb};
+use image::{ImageBuffer, Rgb};
 use anyhow::{Context, Result};
 use std::path::Path;
 use log::info;

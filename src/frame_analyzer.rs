@@ -1,5 +1,5 @@
-use img_hash::image::{DynamicImage, ImageBuffer, Rgb};
-use img_hash::{HasherConfig, ImageHash};
+use image::{DynamicImage, ImageBuffer, Rgb};
+use imagehash::{PerceptualHash, Hash};
 use anyhow::Result;
 use log::info;
 use std::fs;
@@ -34,20 +34,20 @@ pub fn analyze_frames(
 
     // Decide upfront hash size (controls precision and speed)
     let hash_size = (8, 8); // 64-bit hash
-    let hasher = HasherConfig::new()
-        .hash_size(hash_size.0, hash_size.1)
-        .to_hasher();
+    let hasher = PerceptualHash::new()
+        .with_image_size(hash_size.0, hash_size.1)
+        .with_hash_size(hash_size.0, hash_size.1);    
     let max_distance = (hash_size.0 * hash_size.1) as u32;
-    let mut last_hash: Option<ImageHash> = None;
+    let mut last_hash: Option<Hash> = None;
 
     for (i, frame) in frames.into_iter().enumerate() {
         pb.inc(1);
-        // Convert ImageBuffer to DynamicImage so it works with img_hash
-        let dyn_img = DynamicImage::ImageRgb8(frame.clone());
-        let hash = hasher.hash_image(&dyn_img);
+        // Convert ImageBuffer to DynamicImage so it works with imagehash
+        let dyn_img = DynamicImage::ImageRgb8(frame);
+        let hash = hasher.hash(&dyn_img);
 
         if let Some(prev) = &last_hash {
-            let dist = hash.dist(prev);
+            let dist = hamming_distance(prev, &hash);
             differences.push(dist);
 
             // Normalize if you want sensitivity to be a percentage (0.0–1.0)
@@ -59,7 +59,7 @@ pub fn analyze_frames(
             }
         }
 
-        kept_frames.push(frame);
+        kept_frames.push(dyn_img.to_rgb8());
         last_hash = Some(hash);        
     }
 
@@ -93,4 +93,19 @@ pub fn analyze_frames(
         differences,
         removed_indices,
     })
+}
+
+/// Calculates the Hamming distance between two vectors of bools.
+/// 
+/// # Panics
+/// Panics if the two vectors have different lengths.
+fn hamming_distance(a: &Hash, b: &Hash) -> u32 {
+    let a_bits = &a.bits;
+    let b_bits = &b.bits;
+    assert_eq!(a_bits.len(), b_bits.len(), "Vectors must be the same length");
+
+    a_bits.iter()
+        .zip(b_bits.iter())
+        .filter(|(x, y)| x != y)
+        .count() as u32
 }

@@ -57,8 +57,8 @@ pub fn run(config: Config) -> Result<()> {
     info!("Extracted {} frames. Analyzing for unique content...", frames.len());
 
     // 3. Frame Analysis (Placeholder)
-    //let analysis = frame_analyzer::analyze_frames(frames, config.sensitivity, &config.output_dir)?;
-    let unique_frames = frames;
+    let analysis = frame_analyzer::analyze_frames(frames, config.sensitivity, &config.output_dir)?;
+    let unique_frames = analysis.kept_frames;
     info!("Found {} unique frames to process.", unique_frames.len());
 
 
@@ -79,14 +79,9 @@ pub fn run(config: Config) -> Result<()> {
         "img" => {
             info!("Saving unique frames as images to {:?}", result_dir);
             for (i, frame) in unique_frames.iter().enumerate() {
-                let file_name = format!("frame_{:05}.png", i);
-                let path = &result_dir.join(file_name);                
-
-                img_hash::image::DynamicImage::ImageRgb8(frame.clone())
-                    .save(&path)
-                    .with_context(|| format!("Failed to save frame to {:?}", path))?;
-
-                info!("Saved {:?}", path);
+                let frame_path = result_dir.join(format!("frame_{:05}.png", i));
+                frame.save(&frame_path)
+                     .with_context(|| format!("Failed to save frame to {:?}", frame_path))?;
             }
             info!("Successfully saved {} frames to {:?}", unique_frames.len(), result_dir);
         }

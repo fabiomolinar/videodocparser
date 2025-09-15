@@ -11,7 +11,7 @@ use std::path::PathBuf;
 
 // Define modules for different functionalities
 pub mod video_processor;
-// pub mod frame_analyzer;
+pub mod frame_analyzer;
 // pub mod ocr;
 // pub mod element_detector;
 // pub mod document_builder;
@@ -36,11 +36,13 @@ pub fn run(config: Config) -> Result<()> {
         fs::create_dir_all(&config.output_dir)
             .context("Failed to create output directory")?;
     }
-    let images_dir = config.output_dir.join("images");
-    if !images_dir.exists() {
-        fs::create_dir_all(&images_dir)
-            .context("Failed to create images subdirectory")?;
+    let result_dir = config.output_dir.join("result");
+    if result_dir.exists() {
+        fs::remove_dir_all(&result_dir)
+            .context("Failed to clear existing result directory")?;
     }
+    fs::create_dir_all(&result_dir)
+        .context("Failed to create result directory")?;
 
 
     // 2. Process Video
@@ -55,9 +57,8 @@ pub fn run(config: Config) -> Result<()> {
     info!("Extracted {} frames. Analyzing for unique content...", frames.len());
 
     // 3. Frame Analysis (Placeholder)
-    // TODO: Implement frame_analyzer to select unique frames
-    // For now, we will consider all frames as "unique" for the 'img' format.
-    let unique_frames = frames; // In the future, this will be the output of frame_analyzer
+    let analysis = frame_analyzer::analyze_frames(frames, config.sensitivity, &config.output_dir)?;
+    let unique_frames = analysis.kept_frames;
     info!("Found {} unique frames to process.", unique_frames.len());
 
 
@@ -78,11 +79,11 @@ pub fn run(config: Config) -> Result<()> {
         "img" => {
             info!("Saving unique frames as images...");
             for (i, frame) in unique_frames.iter().enumerate() {
-                let frame_path = images_dir.join(format!("frame_{:05}.png", i));
+                let frame_path = result_dir.join(format!("frame_{:05}.png", i));
                 frame.save(&frame_path)
                      .with_context(|| format!("Failed to save frame to {:?}", frame_path))?;
             }
-            info!("Successfully saved {} frames to {:?}", unique_frames.len(), images_dir);
+            info!("Successfully saved {} frames to {:?}", unique_frames.len(), result_dir);
         }
         _ => unreachable!(), // Should be caught by clap
     }

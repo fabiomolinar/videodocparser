@@ -8,7 +8,7 @@ use ffmpeg::format::{input, Pixel};
 use ffmpeg::media::Type;
 use ffmpeg::software::scaling::{Context as ScalingContext, flag::Flags};
 use ffmpeg::util::frame::video::Video;
-use image::{ImageBuffer, Rgb};
+use img_hash::image::{ImageBuffer, Rgb};
 use anyhow::{Context, Result};
 use std::path::Path;
 use log::info;
@@ -49,10 +49,19 @@ pub fn extract_frames(path: &Path) -> Result<Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>>
                 let mut rgb_frame = Video::empty();
                 scaler.run(&decoded, &mut rgb_frame).context("Scaler failed")?;
                 
-                let frame_data = rgb_frame.data(0);
-                let img: ImageBuffer<Rgb<u8>, Vec<u8>> = 
-                    ImageBuffer::from_raw(rgb_frame.width(), rgb_frame.height(), frame_data.to_vec())
-                        .context("Failed to create image buffer from frame data")?;
+                let (w, h) = (rgb_frame.width(), rgb_frame.height());
+                let stride = rgb_frame.stride(0);
+                let data = rgb_frame.data(0);
+
+                let mut buf = Vec::with_capacity((w * h * 3) as usize);
+                for y in 0..h {
+                    let start = (y as usize) * stride;
+                    let end = start + (w * 3) as usize;
+                    buf.extend_from_slice(&data[start..end]);
+                }
+
+                let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
+                    ImageBuffer::from_vec(w, h, buf).context("Failed to create image buffer")?;
                 
                 frames.push(img);
                 

@@ -77,10 +77,10 @@ pub fn run(config: Config) -> Result<()> {
             info!("Markdown generation is not yet implemented.");
         }
         "img" => {
-            info!("Saving unique frames as images...");
+            info!("Saving unique frames as images to {:?}", result_dir);
             for (i, frame) in unique_frames.iter().enumerate() {
                 let file_name = format!("frame_{:05}.png", i);
-                let path = &result_dir.join(file_name);
+                let path = &result_dir.join(file_name);                
 
                 img_hash::image::DynamicImage::ImageRgb8(frame.clone())
                     .save(&path)

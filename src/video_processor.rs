@@ -58,8 +58,12 @@ pub fn extract_frames(path: &Path) -> Result<Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>>
                     let start = (y as usize) * stride;
                     let end = start + (w * 3) as usize;
                     buf.extend_from_slice(&data[start..end]);
-                }
-
+                }                                
+                assert_eq!(
+                    buf.len(), (w * h * 3) as usize, 
+                    "Frame buffer length mismatch: got {}, expected {}", 
+                    buf.len(), (w * h * 3)
+                );
                 let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
                     ImageBuffer::from_vec(w, h, buf).context("Failed to create image buffer")?;
                 

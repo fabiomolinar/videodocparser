@@ -22,11 +22,11 @@ struct Args {
     output: PathBuf,
 
     /// Output format
-    #[arg(short, long, value_enum, default_value_t = OutputFormat::Pdf)]
+    #[arg(short, long, value_enum, default_value_t = OutputFormat::Img)]
     format: OutputFormat,
 
     /// Frame-to-frame comparison sensitivity threshold (0.0 to 1.0)
-    #[arg(short, long, default_value_t = 0.95)]
+    #[arg(short, long, default_value_t = 0.9)]
     sensitivity: f64,
 
     /// OCR language (e.g., "eng" for English, "spa" for Spanish)
@@ -34,7 +34,7 @@ struct Args {
     lang: String,
 
     /// Generate an optional JSON index file with metadata
-    #[arg(long)]
+    #[arg(long, default_value_t = false)]
     index: bool,
 
     /// Logging verbosity level

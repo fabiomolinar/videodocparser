@@ -7,12 +7,14 @@ use image::{ImageBuffer, Rgb};
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{info, warn};
 use rayon::prelude::*;
+use serde::Serialize; // Added for serialization
+use std::fs; // Added for file system operations
 use std::path::PathBuf;
 // Use the correct API and types from the provided source
 use tesseract_rs::{TessPageIteratorLevel, TesseractAPI};
 
 /// Represents a single recognized word with its metadata.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct OcrWord {
     pub text: String,
     /// Bounding box as a tuple: (x1, y1, x2, y2)
@@ -21,7 +23,7 @@ pub struct OcrWord {
 }
 
 /// Holds all the recognized words from a single frame.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct OcrFrameResult {
     pub frame_index: usize,
     pub words: Vec<OcrWord>,
@@ -50,8 +52,11 @@ fn get_tessdata_dir() -> Result<PathBuf> {
 /// Performs OCR in parallel on a vector of image frames, extracting detailed word data.
 pub fn perform_ocr_on_frames(
     frames: &[ImageBuffer<Rgb<u8>, Vec<u8>>],
-    lang: &str,
+    config: &crate::Config,
 ) -> Result<Vec<OcrFrameResult>> {
+    let lang = &config.lang;
+    let output_dir = &config.output_dir;
+   
     info!("Starting detailed OCR on {} frames using language '{}'...", frames.len(), lang);
 
     // Initialize one master API instance. It will be cloned for each thread.
@@ -73,26 +78,21 @@ pub fn perform_ocr_on_frames(
         .enumerate()
         .filter_map(|(index, frame)| {
             pb.inc(1);
-            // Clone the master API for this thread. This is the intended usage.
             let api_clone = api.clone();
-
             if let Err(e) = api_clone.set_image(
                 frame.as_raw(),
                 frame.width() as i32,
                 frame.height() as i32,
-                3, // bytes per pixel for RGB
-                (frame.width() * 3) as i32, // bytes per line
+                3,
+                (frame.width() * 3) as i32,
             ) {
-                // Now, `e` contains the specific error variant, which will be printed.
                 warn!("Tesseract failed to set image for frame {}: {}. Skipping.", index, e);
                 return None;
             }
-
             if api_clone.recognize().is_err() {
                  warn!("Tesseract failed to recognize text for frame {}. Skipping.", index);
                  return None;
             }
-
             let iter = match api_clone.get_iterator() {
                 Ok(iter) => iter,
                 Err(_) => {
@@ -100,38 +100,40 @@ pub fn perform_ocr_on_frames(
                     return None;
                 }
             };
-            
             let mut words = Vec::new();
-            // Loop while the iterator can advance to the next word
             while iter.next(TessPageIteratorLevel::RIL_WORD).unwrap_or(false) {
                 let word_text = match iter.get_utf8_text(TessPageIteratorLevel::RIL_WORD) {
                     Ok(text) => text.trim().to_string(),
                     Err(_) => continue,
                 };
-
                 if !word_text.is_empty() {
                     if let (Ok(bbox), Ok(confidence)) = (
                         iter.get_bounding_box(TessPageIteratorLevel::RIL_WORD),
-                        iter.confidence(TessPageIteratorLevel::RIL_WORD)
+                        iter.confidence(TessPageIteratorLevel::RIL_WORD),
                     ) {
-                        words.push(OcrWord {
-                            text: word_text,
-                            bbox,
-                            confidence,
-                        });
+                        words.push(OcrWord { text: word_text, bbox, confidence });
                     }
                 }
             }
-
-            Some(OcrFrameResult {
-                frame_index: index,
-                words,
-            })
+            Some(OcrFrameResult { frame_index: index, words })
         })
         .collect();
 
     pb.finish_with_message("OCR complete");
     info!("Successfully performed detailed OCR on {} frames.", results.len());
+
+    // Save results to a JSON file
+    let ocr_dir = output_dir.join("ocr");
+    fs::create_dir_all(&ocr_dir).context("Failed to create ocr output directory")?;
+    let report_path = ocr_dir.join("ocr_results.json");
+    
+    let report_json =
+        serde_json::to_string_pretty(&results).context("Failed to serialize OCR results")?;
+    
+    fs::write(&report_path, report_json)
+        .with_context(|| format!("Failed to write OCR report to {:?}", report_path))?;
+    
+    info!("OCR results saved to {:?}", report_path);
 
     Ok(results)
 }

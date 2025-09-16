@@ -67,7 +67,7 @@ pub fn run(config: Config) -> Result<()> {
     info!("Found {} unique frames to process.", unique_frames.len());
 
     // 5. Perform OCR on Unique Frames
-    let ocr_results = ocr::perform_ocr_on_frames(&unique_frames, &config.lang)
+    let ocr_results = ocr::perform_ocr_on_frames(&unique_frames, &config)
         .context("OCR processing failed")?;
     // For now, let's just log the word count of each result to verify.
     for result in &ocr_results {

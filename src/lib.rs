@@ -13,7 +13,7 @@ use std::path::PathBuf;
 // Define modules for different functionalities
 pub mod video_processor;
 pub mod frame_analyzer;
-// pub mod ocr;
+pub mod ocr;
 // pub mod element_detector;
 // pub mod document_builder;
 
@@ -58,17 +58,23 @@ pub fn run(config: Config) -> Result<()> {
     video_processor::process_frames_stream(&config.input_file, frame_handler)?;
 
     // 4. Finalize Analysis
-    let analysis_result = analyzer.finish()?;
-    
+    let analysis_result = analyzer.finish()?;    
     if analysis_result.kept_frames.is_empty() {
         warn!("No unique frames were found based on the sensitivity settings. Exiting.");
         return Ok(());
-    }
-    
+    }    
     let unique_frames = analysis_result.kept_frames;
     info!("Found {} unique frames to process.", unique_frames.len());
 
-    // 5. Build Document or Save Images
+    // 5. Perform OCR on Unique Frames
+    let ocr_results = ocr::perform_ocr_on_frames(&unique_frames, &config.lang)
+        .context("OCR processing failed")?;
+    // For now, let's just log the word count of each result to verify.
+    for result in &ocr_results {
+        info!("Frame {}: Found {} words.", result.frame_index, result.words.len());
+    }
+
+    // 6. Build Document or Save Images
     info!("Generating output in '{}' format.", config.output_format);
     match config.output_format.as_str() {
         "pdf" => {

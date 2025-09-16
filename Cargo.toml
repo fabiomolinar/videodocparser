@@ -23,3 +23,12 @@ rayon = "1.11.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.143"
 tesseract-rs = { version = "0.1.20", features = ["build-tesseract"] }
+dhat = "0.3.3"
+
+[profile.profiling]
+inherits = "release"
+debug = true
+
+[features]
+dhat-heap = []
+

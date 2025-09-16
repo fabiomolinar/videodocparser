@@ -4,6 +4,10 @@
 //! the application environment (like logging), and dispatching the core
 //! processing logic.
 
+#[cfg(feature = "dhat-heap")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
+
 use std::ops::RangeInclusive;
 use clap::Parser;
 use log::{error, info};
@@ -71,6 +75,9 @@ enum LogLevel {
 }
 
 fn main() {
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::new_heap();
+    
     let args = Args::parse();
 
     // 1. Initialize Logger

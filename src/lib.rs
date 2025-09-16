@@ -6,6 +6,7 @@
 
 use anyhow::{Context, Result};
 use log::{info, warn};
+use rayon::prelude::*; // Import Rayon's parallel iterator traits
 use std::fs;
 use std::path::PathBuf;
 
@@ -82,11 +83,14 @@ pub fn run(config: Config) -> Result<()> {
         }
         "img" => {
             info!("Saving unique frames as images to {:?}", result_dir);
-            for (i, frame) in unique_frames.iter().enumerate() {
+            // Use a parallel iterator to save frames concurrently.
+            unique_frames.par_iter().enumerate().try_for_each(|(i, frame)| -> Result<()> {
                 let frame_path = result_dir.join(format!("frame_{:05}.png", i));
                 frame.save(&frame_path)
                      .with_context(|| format!("Failed to save frame to {:?}", frame_path))?;
-            }
+                Ok(())
+            })?;
+
             info!("Successfully saved {} frames to {:?}", unique_frames.len(), result_dir);
         }
         _ => unreachable!(), // Should be caught by clap

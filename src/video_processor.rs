@@ -50,10 +50,28 @@ pub fn extract_frames(path: &Path) -> Result<Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>>
                 scaler.run(&decoded, &mut rgb_frame).context("Scaler failed")?;
                 
                 let frame_data = rgb_frame.data(0);
-                let img: ImageBuffer<Rgb<u8>, Vec<u8>> = 
-                    ImageBuffer::from_raw(rgb_frame.width(), rgb_frame.height(), frame_data.to_vec())
-                        .context("Failed to create image buffer from frame data")?;
+                let width = rgb_frame.width() as usize;
+                let height = rgb_frame.height() as usize;
+                let stride = rgb_frame.stride(0) as usize;
+
+                if stride == 0 {
+                    return Err(anyhow::anyhow!("Invalid frame stride"));
+                }
                 
+                let mut new_vec = Vec::with_capacity(width * height * 3);
+                for y in 0..height {
+                    let start_index = y * stride;
+                    let end_index = start_index + (width * 3);
+                    if end_index > frame_data.len() {
+                        return Err(anyhow::anyhow!("Frame data is smaller than expected"));
+                    }
+                    new_vec.extend_from_slice(&frame_data[start_index..end_index]);
+                }
+
+                let img: ImageBuffer<Rgb<u8>, Vec<u8>> = 
+                    ImageBuffer::from_vec(width as u32, height as u32, new_vec)
+                        .context("Failed to create image buffer from frame data")?;
+
                 frames.push(img);
                 
                 if frame_index % 100 == 0 {
@@ -76,4 +94,3 @@ pub fn extract_frames(path: &Path) -> Result<Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>>
     info!("Finished extracting {} frames total.", frames.len());
     Ok(frames)
 }
-

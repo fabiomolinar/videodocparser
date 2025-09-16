@@ -9,9 +9,42 @@ use ffmpeg::media::Type;
 use ffmpeg::software::scaling::{Context as ScalingContext, flag::Flags};
 use ffmpeg::util::frame::video::Video;
 use image::{ImageBuffer, Rgb};
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use std::path::Path;
 use log::info;
+
+/// Attempts to get the total number of frames from video metadata.
+///
+/// This function is much faster than decoding the whole video, but the
+/// result can be an estimate for variable frame rate (VFR) videos.
+pub fn get_frame_count(path: &Path) -> Result<u64> {
+    ffmpeg::init().context("Failed to initialize FFmpeg")?;
+    let ictx = input(path).context("Failed to open input file for frame count")?;
+    let stream = ictx
+        .streams()
+        .best(Type::Video)
+        .ok_or_else(|| anyhow!("Could not find video stream in file"))?;
+
+    // First, try the most direct method if available in the container
+    let frame_count = stream.frames();
+    if frame_count > 0 {
+        return Ok(frame_count as u64);
+    }
+
+    // Fallback: Calculate from duration and average frame rate
+    let duration = ictx.duration();
+    let frame_rate = stream.avg_frame_rate();
+
+    if duration > 0 && frame_rate.0 > 0 && frame_rate.1 > 0 {
+        // Duration is in AV_TIME_BASE units (microseconds), so convert to seconds
+        let duration_secs = duration as f64 / 1_000_000.0;
+        let fps = frame_rate.0 as f64 / frame_rate.1 as f64;
+        let estimated_frames = (duration_secs * fps).round() as u64;
+        return Ok(estimated_frames);
+    }
+
+    Err(anyhow!("Could not determine frame count from video metadata"))
+}
 
 /// Processes video frames using a streaming approach.
 ///

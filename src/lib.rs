@@ -5,8 +5,9 @@
 //! document generation.
 
 use anyhow::{Context, Result};
+use indicatif::{ProgressBar, ProgressStyle}; // Import ProgressBar and ProgressStyle
 use log::{info, warn};
-use rayon::prelude::*; // Import Rayon's parallel iterator traits
+use rayon::prelude::*;
 use std::fs;
 use std::path::PathBuf;
 
@@ -50,29 +51,53 @@ pub fn run(config: Config) -> Result<()> {
     let mut analyzer = frame_analyzer::FrameAnalyzer::new(config.sensitivity, &config.output_dir)?;
 
     // 3. Process Video Stream
-    info!("Starting video processing stream for: {:?}", config.input_file);    
+    info!("Starting video processing stream for: {:?}", config.input_file);
+    let pb = match video_processor::get_frame_count(&config.input_file) {
+        Ok(count) if count > 0 => {
+            let bar = ProgressBar::new(count);
+            bar.set_style(
+                ProgressStyle::default_bar()
+                    .template("{spinner:.green} Analyzing frames [{bar:40.cyan/blue}] {pos}/{len} ({percent}%) [{elapsed_precise}<{eta}]")
+                    .unwrap()
+                    .progress_chars("##-"),
+            );
+            bar
+        }
+        _ => {
+            warn!("Could not determine total frame count. Using spinner as fallback.");
+            let bar = ProgressBar::new_spinner();
+            bar.set_style(
+                ProgressStyle::default_spinner()
+                    .template("{spinner:.green} Analyzing frames... [{elapsed_precise}] {pos} frames processed")
+                    .unwrap(),
+            );
+            bar
+        }
+    };
+    pb.enable_steady_tick(std::time::Duration::from_millis(100));
+
+
     let frame_handler = |frame| {
-        // This closure is called for each frame by the video processor.
-        analyzer.process_frame(frame)
+        analyzer.process_frame(frame)?;
+        pb.inc(1);
+        Ok(())
     };
     video_processor::process_frames_stream(&config.input_file, frame_handler)?;
+    let final_pos = pb.position();
+    pb.finish_with_message(format!("Analyzed {} frames", final_pos));
 
     // 4. Finalize Analysis
-    let analysis_result = analyzer.finish()?;    
+    let analysis_result = analyzer.finish()?;
     if analysis_result.kept_frames.is_empty() {
         warn!("No unique frames were found based on the sensitivity settings. Exiting.");
         return Ok(());
-    }    
+    }
     let unique_frames = analysis_result.kept_frames;
     info!("Found {} unique frames to process.", unique_frames.len());
 
     // 5. Perform OCR on Unique Frames
     let ocr_results = ocr::perform_ocr_on_frames(&unique_frames, &config)
         .context("OCR processing failed")?;
-    // For now, let's just log the word count of each result to verify.
-    for result in &ocr_results {
-        info!("Frame {}: Found {} words.", result.frame_index, result.words.len());
-    }
 
     // 6. Build Document or Save Images
     info!("Generating output in '{}' format.", config.output_format);

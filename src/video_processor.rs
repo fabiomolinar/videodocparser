@@ -40,8 +40,6 @@ pub fn extract_frames(path: &Path) -> Result<Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>>
         Flags::BILINEAR,
     ).context("Failed to create scaler")?;
 
-    let mut frame_index = 0;
-
     let mut receive_and_process_decoded_frames = 
         |decoder: &mut ffmpeg::decoder::Video| -> Result<()> {
             let mut decoded = Video::empty();
@@ -72,12 +70,7 @@ pub fn extract_frames(path: &Path) -> Result<Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>>
                     ImageBuffer::from_vec(width as u32, height as u32, new_vec)
                         .context("Failed to create image buffer from frame data")?;
 
-                frames.push(img);
-                
-                if frame_index % 100 == 0 {
-                    info!("Processed frame {}", frame_index);
-                }
-                frame_index += 1;
+                frames.push(img);                
             }
             Ok(())
         };

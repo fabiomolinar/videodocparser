@@ -1,11 +1,15 @@
 use image::{DynamicImage, ImageBuffer, Rgb};
 use imagehash::{PerceptualHash, Hash};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use log::info;
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
 use indicatif::{ProgressBar, ProgressStyle};
+
+// Controls the precision of the perceptual hash. A larger size is more
+// precise but slower.
+const HASH_SIZE: (usize, usize) = (16, 16); // 256-bit hash
 
 pub struct AnalysisResult {
     pub kept_frames: Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>,
@@ -33,11 +37,10 @@ pub fn analyze_frames(
     let mut removed_indices = Vec::new();
 
     // Decide upfront hash size (controls precision and speed)
-    let hash_size = (8, 8); // 64-bit hash
     let hasher = PerceptualHash::new()
-        .with_image_size(hash_size.0, hash_size.1)
-        .with_hash_size(hash_size.0, hash_size.1);    
-    let max_distance = (hash_size.0 * hash_size.1) as u32;
+        .with_image_size(HASH_SIZE.0, HASH_SIZE.1)
+        .with_hash_size(HASH_SIZE.0, HASH_SIZE.1);    
+    let max_distance = (HASH_SIZE.0 * HASH_SIZE.1) as u32;
     let mut last_hash: Option<Hash> = None;
 
     for (i, frame) in frames.into_iter().enumerate() {
@@ -47,7 +50,7 @@ pub fn analyze_frames(
         let hash = hasher.hash(&dyn_img);
 
         if let Some(prev) = &last_hash {
-            let dist = hamming_distance(prev, &hash);
+            let dist = hamming_distance(prev, &hash)?;
             differences.push(dist);
 
             // Normalize if you want sensitivity to be a percentage (0.0–1.0)
@@ -96,16 +99,17 @@ pub fn analyze_frames(
 }
 
 /// Calculates the Hamming distance between two vectors of bools.
-/// 
-/// # Panics
-/// Panics if the two vectors have different lengths.
-fn hamming_distance(a: &Hash, b: &Hash) -> u32 {
+fn hamming_distance(a: &Hash, b: &Hash) -> Result<u32> {
     let a_bits = &a.bits;
     let b_bits = &b.bits;
-    assert_eq!(a_bits.len(), b_bits.len(), "Vectors must be the same length");
+    if a_bits.len() != b_bits.len() {
+        return Err(anyhow!("Cannot compare hashes of different lengths."));
+    }
 
-    a_bits.iter()
+    let distance = a_bits.iter()
         .zip(b_bits.iter())
         .filter(|(x, y)| x != y)
-        .count() as u32
+        .count() as u32;
+
+    Ok(distance)
 }

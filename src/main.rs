@@ -4,10 +4,24 @@
 //! the application environment (like logging), and dispatching the core
 //! processing logic.
 
+use std::ops::RangeInclusive;
 use clap::Parser;
 use log::{error, info};
 use std::path::PathBuf;
 use videodocparser::run;
+
+const SENSITIVITY_RANGE: RangeInclusive<f64> = 0.0..=1.0;
+
+fn sensitivity_in_range(s: &str) -> Result<f64, String> {
+    match s.parse::<f64>() {
+        Ok(val) if SENSITIVITY_RANGE.contains(&val) => Ok(val),
+        _ => Err(format!(
+            "Sensitivity must be a float in the range [{}, {}]",
+            SENSITIVITY_RANGE.start(),
+            SENSITIVITY_RANGE.end()
+        )),
+    }
+}
 
 /// A command-line tool that converts video recordings of documents into searchable digital formats.
 #[derive(Parser, Debug)]
@@ -26,7 +40,7 @@ struct Args {
     format: OutputFormat,
 
     /// Frame-to-frame comparison sensitivity threshold (0.0 to 1.0)
-    #[arg(short, long, default_value_t = 0.9)]
+    #[arg(short, long, default_value_t = 0.9, value_parser = sensitivity_in_range)]
     sensitivity: f64,
 
     /// OCR language (e.g., "eng" for English, "spa" for Spanish)

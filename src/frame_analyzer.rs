@@ -3,102 +3,117 @@ use imagehash::{PerceptualHash, Hash};
 use anyhow::{anyhow, Result};
 use log::info;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
-use indicatif::{ProgressBar, ProgressStyle};
 
 // Controls the precision of the perceptual hash. A larger size is more
 // precise but slower.
 const HASH_SIZE: (usize, usize) = (16, 16); // 256-bit hash
 
+/// Holds the final results of the frame analysis.
 pub struct AnalysisResult {
     pub kept_frames: Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>,
     pub differences: Vec<u32>,
     pub removed_indices: Vec<usize>,
 }
 
-pub fn analyze_frames(
-    frames: Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>,
+/// A stateful analyzer that processes frames one at a time to keep memory usage low.
+pub struct FrameAnalyzer {
     sensitivity: f64,
-    output_dir: &Path,
-) -> Result<AnalysisResult> {
-    let start_time = Instant::now();
-    let total = frames.len() as u64;
-    let pb = ProgressBar::new(total);
-    pb.set_style(
-        ProgressStyle::default_bar()
-            .template("{spinner:.green} Analyzing frames [{bar:40.cyan/blue}] {pos}/{len} ({eta})")
-            .unwrap()
-            .progress_chars("##-"),
-    );
+    output_dir: PathBuf,
+    start_time: Instant,
+    frame_index: usize,
+    hasher: PerceptualHash,
+    max_distance: u32,
+    last_hash: Option<Hash>,
+    kept_frames: Vec<ImageBuffer<Rgb<u8>, Vec<u8>>>,
+    differences: Vec<u32>,
+    removed_indices: Vec<usize>,
+}
 
-    let mut kept_frames = Vec::new();
-    let mut differences = Vec::new();
-    let mut removed_indices = Vec::new();
+impl FrameAnalyzer {
+    /// Creates a new, initialized FrameAnalyzer.
+    pub fn new(sensitivity: f64, output_dir: &Path) -> Result<Self> {
+        let hasher = PerceptualHash::new()
+            .with_image_size(HASH_SIZE.0, HASH_SIZE.1)
+            .with_hash_size(HASH_SIZE.0, HASH_SIZE.1);
+        let max_distance = (HASH_SIZE.0 * HASH_SIZE.1) as u32;
 
-    // Decide upfront hash size (controls precision and speed)
-    let hasher = PerceptualHash::new()
-        .with_image_size(HASH_SIZE.0, HASH_SIZE.1)
-        .with_hash_size(HASH_SIZE.0, HASH_SIZE.1);    
-    let max_distance = (HASH_SIZE.0 * HASH_SIZE.1) as u32;
-    let mut last_hash: Option<Hash> = None;
+        Ok(FrameAnalyzer {
+            sensitivity,
+            output_dir: output_dir.to_path_buf(),
+            start_time: Instant::now(),
+            frame_index: 0,
+            hasher,
+            max_distance,
+            last_hash: None,
+            kept_frames: Vec::new(),
+            differences: Vec::new(),
+            removed_indices: Vec::new(),
+        })
+    }
 
-    for (i, frame) in frames.into_iter().enumerate() {
-        pb.inc(1);
-        // Convert ImageBuffer to DynamicImage so it works with imagehash
+    /// Processes a single frame, comparing it to the previous one.
+    pub fn process_frame(&mut self, frame: ImageBuffer<Rgb<u8>, Vec<u8>>) -> Result<()> {
         let dyn_img = DynamicImage::ImageRgb8(frame);
-        let hash = hasher.hash(&dyn_img);
+        let hash = self.hasher.hash(&dyn_img);
 
-        if let Some(prev) = &last_hash {
+        if let Some(prev) = &self.last_hash {
             let dist = hamming_distance(prev, &hash)?;
-            differences.push(dist);
+            self.differences.push(dist);
 
-            // Normalize if you want sensitivity to be a percentage (0.0–1.0)
-            let diff_ratio = dist as f64 / max_distance as f64;
+            let diff_ratio = dist as f64 / self.max_distance as f64;
 
-            if diff_ratio < (1.0 - sensitivity) {
-                removed_indices.push(i);
-                continue; // drop frame
+            if diff_ratio < (1.0 - self.sensitivity) {
+                self.removed_indices.push(self.frame_index);
+                self.frame_index += 1;
+                return Ok(()); // Drop frame
             }
         }
 
-        kept_frames.push(dyn_img.to_rgb8());
-        last_hash = Some(hash);        
+        self.kept_frames.push(dyn_img.to_rgb8());
+        self.last_hash = Some(hash);
+        self.frame_index += 1;
+        Ok(())
     }
 
-    pb.finish_with_message("Analysis done");
-    let elapsed = start_time.elapsed();
+    /// Finalizes the analysis, writes reports, and returns the results.
+    pub fn finish(self) -> Result<AnalysisResult> {
+        let elapsed = self.start_time.elapsed();
 
-    // Save analysis log
-    let stats_dir = output_dir.join("analysis");
-    fs::create_dir_all(&stats_dir)?;
-    let stats_path = stats_dir.join("frame_analysis.json");
+        // Save analysis log
+        let stats_dir = self.output_dir.join("analysis");
+        fs::create_dir_all(&stats_dir)?;
+        let stats_path = stats_dir.join("frame_analysis.json");
 
-    let report = serde_json::json!({
-        "total_frames": kept_frames.len() + removed_indices.len(),
-        "removed": removed_indices.len(),
-        "kept": kept_frames.len(),
-        "removed_indices": removed_indices,
-        "differences": differences,
-    });
+        let report = serde_json::json!({
+            "total_frames": self.frame_index,
+            "removed": self.removed_indices.len(),
+            "kept": self.kept_frames.len(),
+            "removed_indices": self.removed_indices,
+            "differences": self.differences,
+        });
 
-    fs::write(stats_path, serde_json::to_string_pretty(&report)?)?;
+        fs::write(stats_path, serde_json::to_string_pretty(&report)?)?;
 
-    info!(
-        "Frame analysis complete in {:.2?}. Kept {}, removed {}.",
-        elapsed,
-        kept_frames.len(),
-        removed_indices.len()
-    );
+        info!(
+            "Frame analysis complete in {:.2?}. Processed {}, Kept {}, removed {}.",
+            elapsed,
+            self.frame_index,
+            self.kept_frames.len(),
+            self.removed_indices.len()
+        );
 
-    Ok(AnalysisResult {
-        kept_frames,
-        differences,
-        removed_indices,
-    })
+        Ok(AnalysisResult {
+            kept_frames: self.kept_frames,
+            differences: self.differences,
+            removed_indices: self.removed_indices,
+        })
+    }
 }
 
-/// Calculates the Hamming distance between two vectors of bools.
+
+/// Calculates the Hamming distance between two perceptual hashes.
 fn hamming_distance(a: &Hash, b: &Hash) -> Result<u32> {
     let a_bits = &a.bits;
     let b_bits = &b.bits;

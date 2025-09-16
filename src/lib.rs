@@ -45,26 +45,30 @@ pub fn run(config: Config) -> Result<()> {
         .context("Failed to create result directory")?;
 
 
-    // 2. Process Video
-    info!("Starting video processing for: {:?}", config.input_file);
-    let frames = video_processor::extract_frames(&config.input_file)?;
+    // 2. Initialize Frame Analyzer
+    let mut analyzer = frame_analyzer::FrameAnalyzer::new(config.sensitivity, &config.output_dir)?;
+
+    // 3. Process Video Stream
+    info!("Starting video processing stream for: {:?}", config.input_file);
     
-    if frames.is_empty() {
-        warn!("No frames were extracted from the video. Exiting.");
+    // This closure is called for each frame by the video processor.
+    let frame_handler = |frame| {
+        analyzer.process_frame(frame)
+    };
+
+    video_processor::process_frames_stream(&config.input_file, frame_handler)?;
+
+    // 4. Finalize Analysis
+    let analysis_result = analyzer.finish()?;
+    
+    if analysis_result.kept_frames.is_empty() {
+        warn!("No unique frames were found based on the sensitivity settings. Exiting.");
         return Ok(());
     }
-
-    info!("Extracted {} frames. Analyzing for unique content...", frames.len());
-
-    // 3. Frame Analysis (Placeholder)
-    let analysis = frame_analyzer::analyze_frames(frames, config.sensitivity, &config.output_dir)?;
-    let unique_frames = analysis.kept_frames;
+    
+    let unique_frames = analysis_result.kept_frames;
     info!("Found {} unique frames to process.", unique_frames.len());
 
-
-    // 4. OCR & Element Detection (Placeholder)
-    // TODO: Loop through unique_frames and perform OCR and element detection.
-    
     // 5. Build Document or Save Images
     info!("Generating output in '{}' format.", config.output_format);
     match config.output_format.as_str() {
@@ -90,4 +94,3 @@ pub fn run(config: Config) -> Result<()> {
 
     Ok(())
 }
-

@@ -50,13 +50,11 @@ pub fn run(config: Config) -> Result<()> {
     let mut analyzer = frame_analyzer::FrameAnalyzer::new(config.sensitivity, &config.output_dir)?;
 
     // 3. Process Video Stream
-    info!("Starting video processing stream for: {:?}", config.input_file);
-    
-    // This closure is called for each frame by the video processor.
+    info!("Starting video processing stream for: {:?}", config.input_file);    
     let frame_handler = |frame| {
+        // This closure is called for each frame by the video processor.
         analyzer.process_frame(frame)
     };
-
     video_processor::process_frames_stream(&config.input_file, frame_handler)?;
 
     // 4. Finalize Analysis

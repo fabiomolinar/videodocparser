@@ -102,10 +102,10 @@ pub fn run(config: Config) -> Result<()> {
     match config.output_format.as_str() {
         "pdf" => {
             info!("Building searchable PDF document...");
-            let pdf_path = result_dir.join("pdf");
-            document_builder::build_pdf(&unique_frames, &ocr_results, &pdf_path)
+            let pdf_dir = result_dir.join("pdf");
+            document_builder::build_pdf(&unique_frames, &ocr_results, &pdf_dir)
                 .context("Failed to build PDF document")?;
-            info!("Successfully created PDF: {:?}", pdf_path);
+            info!("Successfully created PDF: {:?}", pdf_dir);
         }
         "md" => {
             // TODO: document_builder::build_markdown(/*...args...*/)?,
@@ -115,7 +115,12 @@ pub fn run(config: Config) -> Result<()> {
             info!("Saving unique frames as images to {:?}", result_dir);
             // Use a parallel iterator to save frames concurrently.
             unique_frames.par_iter().enumerate().try_for_each(|(i, frame)| -> Result<()> {
-                let frame_path = result_dir.join(format!("frame_{:05}.png", i));
+                let frame_dir = result_dir.join("img");
+                if !frame_dir.exists() {
+                    fs::create_dir_all(&frame_dir)
+                        .with_context(|| format!("Failed to create directory {:?}", frame_dir))?;
+                }
+                let frame_path = frame_dir.join(format!("frame_{:05}.png", i));
                 frame.save(&frame_path)
                      .with_context(|| format!("Failed to save frame to {:?}", frame_path))?;
                 Ok(())

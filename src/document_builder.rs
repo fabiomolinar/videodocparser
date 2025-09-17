@@ -5,6 +5,7 @@
 use crate::ocr::OcrFrameResult;
 use anyhow::Result;
 use image::{ImageBuffer, ImageOutputFormat, Rgb};
+use log::info;
 use pdf_writer::{Ref, Content, Filter, Finish, Name, Pdf, Rect, Str};
 use std::collections::HashMap;
 use std::io::Cursor;
@@ -101,11 +102,9 @@ pub fn build_pdf(
         content.transform([scaled_width, 0.0, 0.0, scaled_height, offset_x, offset_y]);
         content.x_object(image_name);
         content.restore_state();
-        pdf.stream(content_ref, &content.finish());
-
+        
         // 4. Overlay OCR text on the image. TBD.
         if let Some(ocr_result) = ocr_map.get(&i) {
-            let mut content = Content::new();
             content.begin_text();
             content.set_text_rendering_mode(pdf_writer::types::TextRenderingMode::Invisible);
 
@@ -134,14 +133,20 @@ pub fn build_pdf(
                 // A simple heuristic to stretch the word to fit its bounding box width
                 // TODO
                 
-                content.show(Str(word.text.as_bytes()));
+                content.show(Str(word.text.as_bytes()));                
             }
-            content.end_text();
+            content.end_text();            
         }
+        pdf.stream(content_ref, &content.finish());
     }
     
-    // Join output path and set pdf file name
+    // Delete output directory if it exists, then recreate it
+    if output_dir.exists() {
+        std::fs::remove_dir_all(output_dir)?;
+    }
+    std::fs::create_dir_all(output_dir)?;
     let output_file = output_dir.join("document.pdf");
+    info!("Writing PDF to {:?}", output_file);
     std::fs::write(output_file, pdf.finish())?;
     Ok(())
 }

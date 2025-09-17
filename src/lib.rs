@@ -5,7 +5,7 @@
 //! document generation.
 
 use anyhow::{Context, Result};
-use indicatif::{ProgressBar, ProgressStyle}; // Import ProgressBar and ProgressStyle
+use indicatif::{ProgressBar, ProgressStyle};
 use log::{info, warn};
 use rayon::prelude::*;
 use std::fs;
@@ -15,8 +15,7 @@ use std::path::PathBuf;
 pub mod video_processor;
 pub mod frame_analyzer;
 pub mod ocr;
-// pub mod element_detector;
-// pub mod document_builder;
+pub mod document_builder; // Make the new module public
 
 /// Application configuration structure.
 #[derive(Debug)]
@@ -45,7 +44,6 @@ pub fn run(config: Config) -> Result<()> {
     }
     fs::create_dir_all(&result_dir)
         .context("Failed to create result directory")?;
-
 
     // 2. Initialize Frame Analyzer
     let mut analyzer = frame_analyzer::FrameAnalyzer::new(config.sensitivity, &config.output_dir)?;
@@ -103,8 +101,11 @@ pub fn run(config: Config) -> Result<()> {
     info!("Generating output in '{}' format.", config.output_format);
     match config.output_format.as_str() {
         "pdf" => {
-            // TODO: document_builder::build_pdf(/*...args...*/)?,
-            info!("PDF generation is not yet implemented.");
+            info!("Building searchable PDF document...");
+            let pdf_path = result_dir.join("document.pdf");
+            document_builder::build_pdf(&unique_frames, &ocr_results, &pdf_path)
+                .context("Failed to build PDF document")?;
+            info!("Successfully created PDF: {:?}", pdf_path);
         }
         "md" => {
             // TODO: document_builder::build_markdown(/*...args...*/)?,
@@ -119,10 +120,9 @@ pub fn run(config: Config) -> Result<()> {
                      .with_context(|| format!("Failed to save frame to {:?}", frame_path))?;
                 Ok(())
             })?;
-
             info!("Successfully saved {} frames to {:?}", unique_frames.len(), result_dir);
         }
-        _ => unreachable!(), // Should be caught by clap
+        _ => unreachable!(),
     }
 
     Ok(())

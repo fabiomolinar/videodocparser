@@ -40,7 +40,7 @@ struct Args {
     output: PathBuf,
 
     /// Output format
-    #[arg(short, long, value_enum, default_value_t = OutputFormat::Img)]
+    #[arg(short, long, value_enum, default_value_t = OutputFormat::Pdf)]
     format: OutputFormat,
 
     /// Frame-to-frame comparison sensitivity threshold (0.0 to 1.0)

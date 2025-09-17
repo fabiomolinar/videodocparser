@@ -1,8 +1,8 @@
 # videodocparser
 
-VideoDocParser is a command-line tool that converts video recordings of documents (e.g., PDFs, Word files, or printed text) into searchable digital formats.
+VideoDocParser is a command-line tool that converts video recordings of documents being paginated (e.g., PDFs, Word files, or printed text) into searchable digital formats. 
 
-**Still in development.**
+**Note**: I have never tested the application against recordings of documents being scrolled. The application won't probably work with scrolled documents.
 
 ## External dependencies
 
@@ -15,7 +15,9 @@ VideoDocParser is a command-line tool that converts video recordings of document
 
 ## Example
 
-After cloning the repo, one can run the following command to run the process in debug mode (considering the input video is stored at `input/recording.mp4`, and the output to be stored at `output`): `cargo run -- -i input/recording.mp4 -o output -log_level debug`.
+After cloning the repo, one can run the following command to run the process in debug mode (considering the input video is stored at `input/recording.mp4`, and the output to be stored at `output`): `cargo run -- -i input/recording.mp4 -o output`.
+
+If instead of a PDF file you would like just the images from the document, you can set the output format to images as so: `cargo run -- -i input/recording.mp4 -o output -f img`.
 
 ## Profiling
 

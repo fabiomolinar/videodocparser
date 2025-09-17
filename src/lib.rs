@@ -102,7 +102,7 @@ pub fn run(config: Config) -> Result<()> {
     match config.output_format.as_str() {
         "pdf" => {
             info!("Building searchable PDF document...");
-            let pdf_path = result_dir.join("document.pdf");
+            let pdf_path = result_dir.join("pdf");
             document_builder::build_pdf(&unique_frames, &ocr_results, &pdf_path)
                 .context("Failed to build PDF document")?;
             info!("Successfully created PDF: {:?}", pdf_path);

@@ -18,7 +18,7 @@ const A4_HEIGHT_PT: f32 = 842.0;
 pub fn build_pdf(
     frames: &[ImageBuffer<Rgb<u8>, Vec<u8>>],
     ocr_results: &[OcrFrameResult],
-    output_path: &Path,
+    output_dir: &Path,
 ) -> Result<()> {    
     // Initialize PDF document
     let mut counter = std::iter::successors(Some(1), |n| Some (n + 1));
@@ -141,7 +141,7 @@ pub fn build_pdf(
     }
     
     // Join output path and set pdf file name
-    let output_file = output_path.join("pdf").join("document.pdf");
+    let output_file = output_dir.join("document.pdf");
     std::fs::write(output_file, pdf.finish())?;
     Ok(())
 }

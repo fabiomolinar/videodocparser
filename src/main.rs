@@ -112,7 +112,7 @@ fn main() {
 
     // 4. Run the main application logic
     if let Err(e) = run(config) {
-        error!("Application failed: {}", e);
+        error!("Application failed: {:#}", e);
         std::process::exit(2);
     }
 

@@ -113,7 +113,7 @@ pub fn build_pdf(
                 if word.confidence < 50.0 { continue; }
 
                 // Bounding box as a tuple: (x1, y1, x2, y2)
-                let (x1, y1, x2, y2) = &word.bbox;
+                let (x1, y1, _x2, y2) = word.bbox;
 
                 // Heuristic to estimate font size, now scaled.
                 let scaled_font_size = (y2 - y1) as f32 * scale_factor;
@@ -132,15 +132,9 @@ pub fn build_pdf(
                 content.set_text_matrix(transform);
                 
                 // A simple heuristic to stretch the word to fit its bounding box width
-                let word_width = (x2 - x1) as f32 * scale_factor;
-                let text_width = font_ref.width(scaled_font_size, word.text.as_bytes());
+                // TODO
                 
-                if text_width > 0.0 {
-                    let horizontal_scaling = (word_width / text_width) * 100.0;
-                    content.set_horizontal_scaling(horizontal_scaling);
-                }
-                
-                content.show_text(Str(word.text.as_bytes()));
+                content.show(Str(word.text.as_bytes()));
             }
             content.end_text();
         }
